@@ -2,73 +2,101 @@
 <html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>שידור חי בין מכשירים</title>
+  <title>שידור חי ידני</title>
   <style>
-    body { font-family: sans-serif; text-align: center; direction: rtl; background: #f9f9f9; }
-    video { width: 90%; max-width: 600px; margin-top: 20px; background: #000; }
-    button { font-size: 1.2em; padding: 10px 20px; margin: 10px; cursor: pointer; }
+    body { font-family: sans-serif; direction: rtl; text-align: center; }
+    textarea { width: 90%; height: 100px; margin: 10px auto; display: block; }
+    button { font-size: 1.1em; padding: 10px 20px; margin: 10px; }
+    video { width: 90%; max-width: 600px; margin-top: 20px; background: black; }
   </style>
 </head>
 <body>
-  <h1>שידור חי</h1>
+  <h1>שידור חי (WebRTC ללא שרת)</h1>
+
   <button onclick="startBroadcast()">📡 התחל שידור</button>
   <button onclick="startViewer()">👁️ התחבר לשידור</button>
+
+  <div id="broadcasterSection" style="display:none;">
+    <h3>העתק את הקוד הבא ושלח אותו לצופה:</h3>
+    <textarea id="offerOut" readonly></textarea>
+    <h3>הדבק את קוד התשובה מהצופה כאן:</h3>
+    <textarea id="answerIn"></textarea>
+    <button onclick="receiveAnswer()">📥 התחבר לצופה</button>
+  </div>
+
+  <div id="viewerSection" style="display:none;">
+    <h3>הדבק כאן את קוד השידור מהטלפון:</h3>
+    <textarea id="offerIn"></textarea>
+    <button onclick="sendAnswer()">📤 שלח תשובה למשדר</button>
+    <h3>שלח למשדר את הקוד הבא:</h3>
+    <textarea id="answerOut" readonly></textarea>
+  </div>
+
   <video id="video" autoplay playsinline controls muted></video>
 
   <script>
-    let localStream;
     let peer;
+    let localStream;
 
     async function startBroadcast() {
-      const video = document.getElementById('video');
-      const offerChannel = new BroadcastChannel('stream_offer');
-      const answerChannel = new BroadcastChannel('stream_answer');
-
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      video.srcObject = localStream;
+      document.getElementById('broadcasterSection').style.display = 'block';
 
       peer = new RTCPeerConnection();
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      document.getElementById('video').srcObject = localStream;
       localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
-
-      peer.onicecandidate = e => {
-        if (e.candidate === null) {
-          offerChannel.postMessage(JSON.stringify(peer.localDescription));
-        }
-      };
 
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
 
-      answerChannel.onmessage = async (e) => {
-        const answerDesc = new RTCSessionDescription(JSON.parse(e.data));
-        await peer.setRemoteDescription(answerDesc);
-      };
+      // חכה עד שההצעה תושלם
+      await new Promise(resolve => {
+        peer.onicecandidate = e => {
+          if (!e.candidate) {
+            document.getElementById('offerOut').value = JSON.stringify(peer.localDescription);
+            resolve();
+          }
+        };
+      });
+    }
+
+    async function receiveAnswer() {
+      const answerStr = document.getElementById('answerIn').value;
+      if (!answerStr) return alert('הדבק תשובה מהצופה!');
+      const answer = JSON.parse(answerStr);
+      await peer.setRemoteDescription(new RTCSessionDescription(answer));
+      alert('חיבור בוצע!');
     }
 
     async function startViewer() {
-      const video = document.getElementById('video');
-      const offerChannel = new BroadcastChannel('stream_offer');
-      const answerChannel = new BroadcastChannel('stream_answer');
+      document.getElementById('viewerSection').style.display = 'block';
+    }
+
+    async function sendAnswer() {
+      const offerStr = document.getElementById('offerIn').value;
+      if (!offerStr) return alert('הדבק את קוד השידור!');
+      const offer = JSON.parse(offerStr);
 
       peer = new RTCPeerConnection();
-
       peer.ontrack = (event) => {
-        video.srcObject = event.streams[0];
+        document.getElementById('video').srcObject = event.streams[0];
       };
 
-      peer.onicecandidate = e => {
-        if (e.candidate === null) {
-          answerChannel.postMessage(JSON.stringify(peer.localDescription));
-        }
-      };
+      await peer.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
 
-      offerChannel.onmessage = async (e) => {
-        const offerDesc = new RTCSessionDescription(JSON.parse(e.data));
-        await peer.setRemoteDescription(offerDesc);
+      // חכה לסיום יצירת תשובה
+      await new Promise(resolve => {
+        peer.onicecandidate = e => {
+          if (!e.candidate) {
+            document.getElementById('answerOut').value = JSON.stringify(peer.localDescription);
+            resolve();
+          }
+        };
+      });
 
-        const answer = await peer.createAnswer();
-        await peer.setLocalDescription(answer);
-      };
+      alert('העתק ושלח את קוד התשובה למכשיר המשדר');
     }
   </script>
 </body>
