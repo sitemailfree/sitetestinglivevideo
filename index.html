@@ -4,9 +4,10 @@
   <meta charset="UTF-8">
   <title>שידור חי ידני</title>
   <style>
-    body { font-family: sans-serif; direction: rtl; text-align: center; }
-    textarea { width: 90%; height: 100px; margin: 10px auto; display: block; }
-    button { font-size: 1.1em; padding: 10px 20px; margin: 10px; }
+    body { font-family: sans-serif; direction: rtl; text-align: center; background: #f9f9f9; }
+    textarea { width: 90%; height: 100px; margin: 10px auto; display: block; font-family: monospace; }
+    button { font-size: 1.1em; padding: 10px 20px; margin: 10px; cursor: pointer; }
+    .copy-btn { font-size: 0.9em; padding: 5px 10px; margin-bottom: 10px; }
     video { width: 90%; max-width: 600px; margin-top: 20px; background: black; }
   </style>
 </head>
@@ -17,19 +18,23 @@
   <button onclick="startViewer()">👁️ התחבר לשידור</button>
 
   <div id="broadcasterSection" style="display:none;">
-    <h3>העתק את הקוד הבא ושלח אותו לצופה:</h3>
+    <h3>העתק את הקוד ושלח אותו לצופה:</h3>
     <textarea id="offerOut" readonly></textarea>
-    <h3>הדבק את קוד התשובה מהצופה כאן:</h3>
+    <button class="copy-btn" onclick="copyText('offerOut')">📋 העתק קוד</button>
+
+    <h3>הדבק את התשובה מהצופה:</h3>
     <textarea id="answerIn"></textarea>
-    <button onclick="receiveAnswer()">📥 התחבר לצופה</button>
+    <button class="copy-btn" onclick="receiveAnswer()">📥 התחבר לצופה</button>
   </div>
 
   <div id="viewerSection" style="display:none;">
-    <h3>הדבק כאן את קוד השידור מהטלפון:</h3>
+    <h3>הדבק את קוד השידור:</h3>
     <textarea id="offerIn"></textarea>
-    <button onclick="sendAnswer()">📤 שלח תשובה למשדר</button>
-    <h3>שלח למשדר את הקוד הבא:</h3>
+    <button class="copy-btn" onclick="sendAnswer()">📤 שלח תשובה למשדר</button>
+
+    <h3>העתק את התשובה ושלח למשדר:</h3>
     <textarea id="answerOut" readonly></textarea>
+    <button class="copy-btn" onclick="copyText('answerOut')">📋 העתק קוד</button>
   </div>
 
   <video id="video" autoplay playsinline controls muted></video>
@@ -49,7 +54,6 @@
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
 
-      // חכה עד שההצעה תושלם
       await new Promise(resolve => {
         peer.onicecandidate = e => {
           if (!e.candidate) {
@@ -65,7 +69,7 @@
       if (!answerStr) return alert('הדבק תשובה מהצופה!');
       const answer = JSON.parse(answerStr);
       await peer.setRemoteDescription(new RTCSessionDescription(answer));
-      alert('חיבור בוצע!');
+      alert('✅ חיבור בוצע!');
     }
 
     async function startViewer() {
@@ -86,7 +90,6 @@
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
 
-      // חכה לסיום יצירת תשובה
       await new Promise(resolve => {
         peer.onicecandidate = e => {
           if (!e.candidate) {
@@ -96,7 +99,19 @@
         };
       });
 
-      alert('העתק ושלח את קוד התשובה למכשיר המשדר');
+      alert('📨 העתק ושלח את התשובה למכשיר המשדר');
+    }
+
+    function copyText(elementId) {
+      const el = document.getElementById(elementId);
+      el.select();
+      el.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(el.value).then(() => {
+        const btn = event.target;
+        const oldText = btn.innerText;
+        btn.innerText = '✅ הועתק!';
+        setTimeout(() => btn.innerText = oldText, 2000);
+      });
     }
   </script>
 </body>
