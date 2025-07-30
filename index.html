@@ -1,26 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <title>שידור חי Peer2Peer</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
       background: #121212;
       color: white;
       text-align: center;
       padding: 40px;
     }
+    h1 {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 18px;
+      margin: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: #1e88e5;
+      color: white;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #1565c0;
+    }
     video {
       width: 90%;
       max-width: 700px;
-      border-radius: 10px;
-      margin-top: 20px;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 18px;
-      margin: 10px;
+      border-radius: 12px;
+      margin-top: 30px;
+      background: black;
     }
   </style>
 </head>
@@ -30,7 +44,8 @@
   <button onclick="startBroadcast()">📡 שדר</button>
   <button onclick="startViewer()">👁️ צופה</button>
   <br>
-  <video id="video" autoplay playsinline></video>
+  <video id="video" autoplay playsinline muted></video>
+
   <script>
     const video = document.getElementById('video');
     let pc, localStream;
@@ -40,38 +55,60 @@
     };
 
     async function startBroadcast() {
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      video.srcObject = localStream;
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        video.srcObject = localStream;
 
-      pc = new RTCPeerConnection(config);
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        pc = new RTCPeerConnection(config);
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-      pc.onicecandidate = e => {
-        if (e.candidate) return;
-        const offer = btoa(JSON.stringify(pc.localDescription));
-        prompt('העתק ושלח את ה-Offer הזה לצופה', offer);
-      };
+        pc.onicecandidate = e => {
+          if (e.candidate) return;
+          const offer = btoa(JSON.stringify(pc.localDescription));
+          const copy = confirm("העתק את הקוד הבא ושלח אותו לצופה:\n\n" + offer + "\n\n(העתק ללחצן העכבר הימני או Ctrl+C)");
+          if (!copy) alert("חייב להעתיק את ה-Offer כדי לצופה להתחבר");
+        };
 
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const answerStr = prompt("לאחר שהצופה שלח לך את ה-Answer, הדבק אותו כאן:");
+        if (answerStr) {
+          const answer = new RTCSessionDescription(JSON.parse(atob(answerStr.trim())));
+          await pc.setRemoteDescription(answer);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("שגיאה בשידור: " + err.message);
+      }
     }
 
     async function startViewer() {
-      const offerStr = prompt('הדבק כאן את ה-Offer שקיבלת מהשדר');
-      const offer = new RTCSessionDescription(JSON.parse(atob(offerStr)));
+      try {
+        const offerStr = prompt("הדבק כאן את ה-Offer שקיבלת מהשדר:");
+        if (!offerStr) return alert("לא התקבל Offer");
 
-      pc = new RTCPeerConnection(config);
-      pc.ontrack = e => video.srcObject = e.streams[0];
+        const offer = new RTCSessionDescription(JSON.parse(atob(offerStr.trim())));
+        pc = new RTCPeerConnection(config);
 
-      await pc.setRemoteDescription(offer);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
+        pc.ontrack = e => {
+          video.srcObject = e.streams[0];
+        };
 
-      pc.onicecandidate = e => {
-        if (e.candidate) return;
-        const answerStr = btoa(JSON.stringify(pc.localDescription));
-        prompt('העתק ושלח את ה-Answer לשדר', answerStr);
-      };
+        await pc.setRemoteDescription(offer);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        pc.onicecandidate = e => {
+          if (e.candidate) return;
+          const answerStr = btoa(JSON.stringify(pc.localDescription));
+          const copy = confirm("העתק את הקוד הבא ושלח אותו לשדר:\n\n" + answerStr + "\n\n(העתק ללחצן העכבר הימני או Ctrl+C)");
+          if (!copy) alert("השדר צריך את ה-Answer כדי להשלים את ההתחברות");
+        };
+      } catch (err) {
+        console.error(err);
+        alert("שגיאה בצפייה: ודא שה-Offer תקין\n\n" + err.message);
+      }
     }
   </script>
 </body>
