@@ -2,12 +2,12 @@
 <html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>שידור חי ידני</title>
+  <title>שידור חי ידני (נוח לנייד)</title>
   <style>
     body { font-family: sans-serif; direction: rtl; text-align: center; background: #f9f9f9; }
     textarea { width: 90%; height: 100px; margin: 10px auto; display: block; font-family: monospace; }
-    button { font-size: 1.1em; padding: 10px 20px; margin: 10px; cursor: pointer; }
-    .copy-btn { font-size: 0.9em; padding: 5px 10px; margin-bottom: 10px; }
+    button { font-size: 1.1em; padding: 10px 20px; margin: 10px 5px; cursor: pointer; }
+    .small-btn { font-size: 0.9em; padding: 5px 10px; margin-bottom: 10px; }
     video { width: 90%; max-width: 600px; margin-top: 20px; background: black; }
   </style>
 </head>
@@ -18,23 +18,25 @@
   <button onclick="startViewer()">👁️ התחבר לשידור</button>
 
   <div id="broadcasterSection" style="display:none;">
-    <h3>העתק את הקוד ושלח אותו לצופה:</h3>
+    <h3>📤 העתק ושלח לצופה:</h3>
     <textarea id="offerOut" readonly></textarea>
-    <button class="copy-btn" onclick="copyText('offerOut')">📋 העתק קוד</button>
+    <button class="small-btn" onclick="copyText('offerOut')">📋 העתק</button>
 
-    <h3>הדבק את התשובה מהצופה:</h3>
+    <h3>📥 הדבק את התשובה מהצופה:</h3>
     <textarea id="answerIn"></textarea>
-    <button class="copy-btn" onclick="receiveAnswer()">📥 התחבר לצופה</button>
+    <button class="small-btn" onclick="pasteText('answerIn')">📥 הדבק</button>
+    <button class="small-btn" onclick="receiveAnswer()">✅ התחבר לצופה</button>
   </div>
 
   <div id="viewerSection" style="display:none;">
-    <h3>הדבק את קוד השידור:</h3>
+    <h3>📥 הדבק את קוד השידור:</h3>
     <textarea id="offerIn"></textarea>
-    <button class="copy-btn" onclick="sendAnswer()">📤 שלח תשובה למשדר</button>
+    <button class="small-btn" onclick="pasteText('offerIn')">📥 הדבק</button>
+    <button class="small-btn" onclick="sendAnswer()">📤 שלח תשובה</button>
 
-    <h3>העתק את התשובה ושלח למשדר:</h3>
+    <h3>📤 העתק ושלח למשדר:</h3>
     <textarea id="answerOut" readonly></textarea>
-    <button class="copy-btn" onclick="copyText('answerOut')">📋 העתק קוד</button>
+    <button class="small-btn" onclick="copyText('answerOut')">📋 העתק</button>
   </div>
 
   <video id="video" autoplay playsinline controls muted></video>
@@ -66,7 +68,7 @@
 
     async function receiveAnswer() {
       const answerStr = document.getElementById('answerIn').value;
-      if (!answerStr) return alert('הדבק תשובה מהצופה!');
+      if (!answerStr) return alert('❌ הדבק תשובה מהצופה');
       const answer = JSON.parse(answerStr);
       await peer.setRemoteDescription(new RTCSessionDescription(answer));
       alert('✅ חיבור בוצע!');
@@ -78,7 +80,7 @@
 
     async function sendAnswer() {
       const offerStr = document.getElementById('offerIn').value;
-      if (!offerStr) return alert('הדבק את קוד השידור!');
+      if (!offerStr) return alert('❌ הדבק קוד שידור!');
       const offer = JSON.parse(offerStr);
 
       peer = new RTCPeerConnection();
@@ -99,11 +101,11 @@
         };
       });
 
-      alert('📨 העתק ושלח את התשובה למכשיר המשדר');
+      alert('📨 העתק ושלח את התשובה למשדר');
     }
 
-    function copyText(elementId) {
-      const el = document.getElementById(elementId);
+    function copyText(id) {
+      const el = document.getElementById(id);
       el.select();
       el.setSelectionRange(0, 99999);
       navigator.clipboard.writeText(el.value).then(() => {
@@ -111,6 +113,18 @@
         const oldText = btn.innerText;
         btn.innerText = '✅ הועתק!';
         setTimeout(() => btn.innerText = oldText, 2000);
+      });
+    }
+
+    function pasteText(id) {
+      navigator.clipboard.readText().then(text => {
+        document.getElementById(id).value = text;
+        const btn = event.target;
+        const oldText = btn.innerText;
+        btn.innerText = '📥 הודבק!';
+        setTimeout(() => btn.innerText = oldText, 2000);
+      }).catch(() => {
+        alert("❌ אין גישה להדבקה. אפשר לנסות להדביק ידנית");
       });
     }
   </script>
