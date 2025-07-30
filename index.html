@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>שידור חי Peer2Peer</title>
+  <link rel="icon" href="data:,"> <!-- מונע 404 של favicon -->
   <style>
     body {
       font-family: sans-serif;
@@ -11,22 +12,34 @@
       text-align: center;
       padding: 40px;
     }
+    h1 {
+      font-size: 2em;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 18px;
+      margin: 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: #2196f3;
+      color: white;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #1976d2;
+    }
     video {
       width: 90%;
       max-width: 700px;
-      border-radius: 10px;
-      margin-top: 20px;
+      border-radius: 12px;
+      margin-top: 30px;
       background: black;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 18px;
-      margin: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>שידור חי</h1>
+  <h1>שידור חי דרך הדפדפן</h1>
   <button onclick="startBroadcast()">📡 שדר</button>
   <button onclick="startViewer()">👁️ צופה</button>
   <br>
@@ -40,6 +53,22 @@
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
 
+    function waitForIceGatheringComplete(pc) {
+      return new Promise(resolve => {
+        if (pc.iceGatheringState === 'complete') {
+          resolve();
+        } else {
+          const checkState = () => {
+            if (pc.iceGatheringState === 'complete') {
+              pc.removeEventListener('icegatheringstatechange', checkState);
+              resolve();
+            }
+          };
+          pc.addEventListener('icegatheringstatechange', checkState);
+        }
+      });
+    }
+
     async function startBroadcast() {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -48,14 +77,12 @@
         pc = new RTCPeerConnection(config);
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-        pc.onicecandidate = e => {
-          if (e.candidate) return;
-          const offer = btoa(JSON.stringify(pc.localDescription));
-          alert("🔗 העתק ושלח לצופה את ה־Offer הזה:\n\n" + offer);
-        };
-
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
+        await waitForIceGatheringComplete(pc);
+
+        const offerStr = btoa(JSON.stringify(pc.localDescription));
+        alert("📡 העתק ושלח לצופה את ה־Offer הזה:\n\n" + offerStr);
 
         const answerStr = prompt("📥 לאחר שהצופה שלח לך Answer, הדבק כאן:");
         if (!answerStr) return alert("❌ לא הדבקת Answer");
@@ -70,7 +97,7 @@
     async function startViewer() {
       try {
         const offerStr = prompt("📥 הדבק כאן את ה־Offer שקיבלת מהשדר:");
-        if (!offerStr) return alert("❌ לא הדבקת Offer");
+        if (!offerStr) return alert("❌ לא הודבק Offer");
 
         const offer = new RTCSessionDescription(JSON.parse(atob(offerStr.trim())));
         pc = new RTCPeerConnection(config);
@@ -82,12 +109,10 @@
         await pc.setRemoteDescription(offer);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
+        await waitForIceGatheringComplete(pc);
 
-        pc.onicecandidate = e => {
-          if (e.candidate) return;
-          const answerStr = btoa(JSON.stringify(pc.localDescription));
-          alert("🔗 העתק ושלח לשדר את ה־Answer:\n\n" + answerStr);
-        };
+        const answerStr = btoa(JSON.stringify(pc.localDescription));
+        alert("🔁 העתק את ה־Answer ושלח לשדר:\n\n" + answerStr);
       } catch (err) {
         alert("שגיאה בצפייה: " + err.message);
         console.error(err);
