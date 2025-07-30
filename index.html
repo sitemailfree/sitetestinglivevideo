@@ -5,42 +5,28 @@
   <title>שידור חי Peer2Peer</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: sans-serif;
       background: #121212;
       color: white;
       text-align: center;
       padding: 40px;
     }
-    h1 {
-      font-size: 2em;
-      margin-bottom: 20px;
-    }
-    button {
-      padding: 12px 24px;
-      font-size: 18px;
-      margin: 10px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      background-color: #1e88e5;
-      color: white;
-      transition: background-color 0.3s;
-    }
-    button:hover {
-      background-color: #1565c0;
-    }
     video {
       width: 90%;
       max-width: 700px;
-      border-radius: 12px;
-      margin-top: 30px;
+      border-radius: 10px;
+      margin-top: 20px;
       background: black;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>שידור חי דרך הדפדפן</h1>
-  <p>בחר את התפקיד שלך:</p>
+  <h1>שידור חי</h1>
   <button onclick="startBroadcast()">📡 שדר</button>
   <button onclick="startViewer()">👁️ צופה</button>
   <br>
@@ -65,28 +51,26 @@
         pc.onicecandidate = e => {
           if (e.candidate) return;
           const offer = btoa(JSON.stringify(pc.localDescription));
-          const copy = confirm("העתק את הקוד הבא ושלח אותו לצופה:\n\n" + offer + "\n\n(העתק ללחצן העכבר הימני או Ctrl+C)");
-          if (!copy) alert("חייב להעתיק את ה-Offer כדי לצופה להתחבר");
+          alert("🔗 העתק ושלח לצופה את ה־Offer הזה:\n\n" + offer);
         };
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
 
-        const answerStr = prompt("לאחר שהצופה שלח לך את ה-Answer, הדבק אותו כאן:");
-        if (answerStr) {
-          const answer = new RTCSessionDescription(JSON.parse(atob(answerStr.trim())));
-          await pc.setRemoteDescription(answer);
-        }
+        const answerStr = prompt("📥 לאחר שהצופה שלח לך Answer, הדבק כאן:");
+        if (!answerStr) return alert("❌ לא הדבקת Answer");
+        const answer = new RTCSessionDescription(JSON.parse(atob(answerStr.trim())));
+        await pc.setRemoteDescription(answer);
       } catch (err) {
-        console.error(err);
         alert("שגיאה בשידור: " + err.message);
+        console.error(err);
       }
     }
 
     async function startViewer() {
       try {
-        const offerStr = prompt("הדבק כאן את ה-Offer שקיבלת מהשדר:");
-        if (!offerStr) return alert("לא התקבל Offer");
+        const offerStr = prompt("📥 הדבק כאן את ה־Offer שקיבלת מהשדר:");
+        if (!offerStr) return alert("❌ לא הדבקת Offer");
 
         const offer = new RTCSessionDescription(JSON.parse(atob(offerStr.trim())));
         pc = new RTCPeerConnection(config);
@@ -102,12 +86,11 @@
         pc.onicecandidate = e => {
           if (e.candidate) return;
           const answerStr = btoa(JSON.stringify(pc.localDescription));
-          const copy = confirm("העתק את הקוד הבא ושלח אותו לשדר:\n\n" + answerStr + "\n\n(העתק ללחצן העכבר הימני או Ctrl+C)");
-          if (!copy) alert("השדר צריך את ה-Answer כדי להשלים את ההתחברות");
+          alert("🔗 העתק ושלח לשדר את ה־Answer:\n\n" + answerStr);
         };
       } catch (err) {
+        alert("שגיאה בצפייה: " + err.message);
         console.error(err);
-        alert("שגיאה בצפייה: ודא שה-Offer תקין\n\n" + err.message);
       }
     }
   </script>
