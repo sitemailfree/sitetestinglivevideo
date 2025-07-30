@@ -102,6 +102,7 @@
     <div class="btn-row">
       <button onclick="startBroadcast()">📡 התחל שידור</button>
       <button onclick="startViewer()">👁️ התחבר לשידור</button>
+      <button id="flipBtn" onclick="flipCamera()" style="display: none;">🔄 החלף מצלמה</button>
     </div>
 
     <div id="broadcasterSection" class="section" style="display:none;">
@@ -130,13 +131,15 @@
   <script>
     let peer;
     let localStream;
+    let currentFacingMode = "user"; // "user" (קדמית) או "environment" (אחורית)
 
     async function startBroadcast() {
       document.getElementById('broadcasterSection').style.display = 'block';
+      document.getElementById('flipBtn').style.display = 'inline-block';
+
+      await initCamera();
 
       peer = new RTCPeerConnection();
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      document.getElementById('video').srcObject = localStream;
       localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
 
       const offer = await peer.createOffer();
@@ -150,6 +153,33 @@
           }
         };
       });
+    }
+
+    async function initCamera() {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+
+      const constraints = {
+        video: { facingMode: currentFacingMode },
+        audio: true
+      };
+
+      localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      document.getElementById('video').srcObject = localStream;
+    }
+
+    async function flipCamera() {
+      currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+      await initCamera();
+
+      if (peer) {
+        const videoSender = peer.getSenders().find(s => s.track.kind === 'video');
+        const newTrack = localStream.getVideoTracks()[0];
+        if (videoSender && newTrack) {
+          videoSender.replaceTrack(newTrack);
+        }
+      }
     }
 
     async function receiveAnswer() {
