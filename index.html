@@ -97,7 +97,7 @@
   <h1>🎥 שידור חי - WebRTC</h1>
 
   <div class="container">
-    <video id="video" autoplay playsinline controls muted></video>
+    <video id="video" autoplay playsinline controls></video>
 
     <div class="btn-row">
       <button onclick="startBroadcast()">📡 התחל שידור</button>
@@ -133,13 +133,19 @@
     let localStream;
     let currentFacingMode = "user"; // "user" (קדמית) או "environment" (אחורית)
 
+    const iceConfig = {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" }
+      ]
+    };
+
     async function startBroadcast() {
       document.getElementById('broadcasterSection').style.display = 'block';
       document.getElementById('flipBtn').style.display = 'inline-block';
 
       await initCamera();
 
-      peer = new RTCPeerConnection();
+      peer = new RTCPeerConnection(iceConfig);
       localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
 
       const offer = await peer.createOffer();
@@ -199,7 +205,7 @@
       if (!offerStr) return alert('❌ הדבק קוד שידור!');
       const offer = JSON.parse(offerStr);
 
-      peer = new RTCPeerConnection();
+      peer = new RTCPeerConnection(iceConfig);
       peer.ontrack = (event) => {
         document.getElementById('video').srcObject = event.streams[0];
       };
