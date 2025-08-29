@@ -1,254 +1,436 @@
-<!DOCTYPE html>
-<html lang="he">
+<!doctype html>
+<html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>שידור חי - WebRTC</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Anon P2P Chat</title>
   <style>
+    :root {
+      --bg: #0b0d10;
+      --panel: #12161b;
+      --panel-2: #0f1317;
+      --text: #e8eef4;
+      --muted: #9fb0c0;
+      --accent: #7aa2ff;
+      --accent-2: #a07bff;
+      --danger: #ff6b6b;
+      --success: #3ddc97;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    html,body { height: 100%; }
     body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', sans-serif;
-      direction: rtl;
-      background: #111;
-      color: #f4f4f4;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background:
+        radial-gradient(60vw 60vw at 100% -20%, rgba(122,162,255,.08), transparent 60%),
+        radial-gradient(70vw 70vw at -10% 120%, rgba(160,123,255,.08), transparent 60%),
+        var(--bg);
+      color: var(--text);
     }
 
-    h1 {
-      margin-top: 40px;
-      font-size: 2em;
+    /* Layout */
+    .container { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+    header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 18px clamp(16px, 3vw, 28px); border-bottom: 1px solid rgba(255,255,255,.06);
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+      backdrop-filter: blur(6px);
     }
-
-    .container {
-      width: 100%;
-      max-width: 720px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: var(--shadow);
+      display: grid; place-items: center; font-weight: 800; color: #0b0d10;
     }
+    .brand h1 { font-size: clamp(16px, 3.2vw, 20px); margin: 0; letter-spacing: .5px; }
+    .utils { display: flex; gap: 10px; align-items: center; }
 
-    video {
-      width: 100%;
-      max-width: 100%;
-      border-radius: 8px;
-      background-color: black;
-      border: 1px solid #333;
+    main { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 76px); }
+    aside { border-left: 1px solid rgba(255,255,255,.06); background: var(--panel-2); }
+    .panel { height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+
+    /* Join screen */
+    .join {
+      display: grid; place-items: center; padding: 32px; height: 100%; background: var(--panel);
+      animation: fadeIn .4s ease;
     }
-
-    .btn-row {
-      margin: 20px 0;
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
+    .card {
+      width: min(840px, 92vw); background: linear-gradient(180deg, #0f1419, #0c1014);
+      border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: clamp(16px, 3vw, 28px); display: grid; gap: 16px;
     }
+    .card h2 { margin: 0 0 6px; font-size: clamp(18px, 3.4vw, 22px); }
+    .grid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+    .grid-3 { display: grid; gap: 12px; grid-template-columns: 1fr 1fr 1fr; }
 
-    button {
-      font-size: 1em;
-      padding: 10px 20px;
-      border-radius: 6px;
-      background-color: #222;
-      color: #fff;
-      border: 1px solid #444;
-      cursor: pointer;
-      transition: all 0.2s ease-in-out;
+    label { font-size: 12px; color: var(--muted); }
+    .field { display: grid; gap: 8px; }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
+      background: #0b0f13; color: var(--text); outline: none; transition: border-color .2s ease, box-shadow .2s ease;
     }
+    input:focus { border-color: rgba(122,162,255,.6); box-shadow: 0 0 0 3px rgba(122,162,255,.18); }
 
-    button:hover {
-      background-color: #00b8a9;
-      color: black;
+    .btn {
+      padding: 11px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(135deg, rgba(122,162,255,.18), rgba(160,123,255,.18));
+      color: var(--text); cursor: pointer; font-weight: 600; transition: transform .1s ease, filter .2s ease, background .3s ease;
+      user-select: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     }
+    .btn:hover { filter: brightness(1.12); }
+    .btn:active { transform: translateY(1px); }
+    .btn.ghost { background: transparent; border-color: rgba(255,255,255,.12); }
+    .btn.danger { background: linear-gradient(135deg, rgba(255,107,107,.16), rgba(255,107,107,.12)); }
 
+    .row { display: flex; gap: 10px; align-items: stretch; }
+    .hint { font-size: 12px; color: var(--muted); }
+
+    /* Chat layout */
+    .sidebar { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+    .roomBox { padding: 16px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .peers { padding: 10px 12px; overflow-y: auto; scrollbar-width: thin; }
+
+    .peer { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; }
+    .peer:hover { background: rgba(255,255,255,.04); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(61,220,151,.18); }
+    .me { opacity: .9; }
+
+    .chat { display: grid; grid-template-rows: 1fr auto; background: var(--panel); }
+    .messages { padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .msg { max-width: min(72ch, 80%); padding: 12px 14px; border-radius: 14px; line-height: 1.35; background: #0d1217; border: 1px solid rgba(255,255,255,.06);
+      box-shadow: 0 10px 20px rgba(0,0,0,.24); animation: slideUp .18s ease both; }
+    .msg.mine { align-self: flex-end; background: linear-gradient(180deg, #0f1722, #0d141c); border-color: rgba(122,162,255,.18); }
+    .meta { display: flex; gap: 8px; align-items: baseline; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+
+    .composer { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 12px; border-top: 1px solid rgba(255,255,255,.06); }
     textarea {
-      width: 100%;
-      height: 100px;
-      margin: 10px 0;
-      background-color: #1a1a1a;
-      color: #00ffd0;
-      border: 1px solid #333;
-      border-radius: 5px;
-      padding: 10px;
-      resize: none;
-      font-family: monospace;
+      resize: none; min-height: 48px; max-height: 120px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
+      background: #0b0f13; color: var(--text); outline: none; line-height: 1.35; scrollbar-width: thin;
     }
+    textarea:focus { border-color: rgba(122,162,255,.6); box-shadow: 0 0 0 3px rgba(122,162,255,.18); }
 
-    .section {
-      width: 100%;
-      margin-top: 20px;
-      padding: 20px;
-      background-color: #1b1b1b;
-      border-radius: 10px;
-      border: 1px solid #2c2c2c;
-    }
+    /* Custom scrollbar */
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: transparent; }
+    *::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 12px; }
+    *::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.14); }
 
-    .small-btn {
-      font-size: 0.9em;
-      padding: 6px 14px;
-      margin: 5px;
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none; } }
+
+    /* Hidden states */
+    .hidden { display: none !important; }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      aside { display: none; }
     }
   </style>
 </head>
 <body>
-
-  <h1>🎥 שידור חי - WebRTC</h1>
-
   <div class="container">
-    <video id="video" autoplay playsinline controls></video>
+    <header>
+      <div class="brand">
+        <div class="logo">✦</div>
+        <h1>Anon P2P Chat</h1>
+      </div>
+      <div class="utils">
+        <button class="btn ghost" id="copyInviteBtn" title="העתקת קישור הזמנה">העתקת קישור</button>
+        <button class="btn danger hidden" id="leaveBtn" title="יציאה מהחדר">יציאה</button>
+      </div>
+    </header>
 
-    <div class="btn-row">
-      <button onclick="startBroadcast()">📡 התחל שידור</button>
-      <button onclick="startViewer()">👁️ התחבר לשידור</button>
-      <button id="flipBtn" onclick="flipCamera()" style="display: none;">🔄 החלף מצלמה</button>
-    </div>
+    <main>
+      <aside>
+        <div class="panel sidebar">
+          <div class="roomBox">
+            <div class="field">
+              <label>שם חדר</label>
+              <input type="text" id="roomId" placeholder="למשל: desert-owl" autocomplete="off" />
+            </div>
+            <div class="field" style="margin-top:10px">
+              <label>סיסמה סודית (לא חובה, מומלץ)</label>
+              <div class="row">
+                <input type="password" id="roomPwd" placeholder="לפחות 10 תווים" autocomplete="off" />
+                <button class="btn ghost" id="genPwdBtn">יצירת סיסמה</button>
+              </div>
+              <div class="hint">הסיסמה אינה נשלחת לשרתים והיא נשמרת רק בקישור #hash להזמנה.</div>
+            </div>
+            <div class="grid" style="margin-top:12px">
+              <button class="btn" id="joinBtn">כניסה לחדר</button>
+              <button class="btn ghost" id="createBtn">יצירת חדר רנדומלי</button>
+            </div>
+          </div>
+          <div class="peers" id="peers"></div>
+          <div style="padding:12px; border-top:1px solid rgba(255,255,255,.06)">
+            <div class="field">
+              <label>שם תצוגה (אנונימי)</label>
+              <input type="text" id="nick" placeholder="למשל: שועל חסר-שם" />
+            </div>
+          </div>
+        </div>
+      </aside>
 
-    <div id="broadcasterSection" class="section" style="display:none;">
-      <h3>📤 העתק ושלח לצופה:</h3>
-      <textarea id="offerOut" readonly></textarea>
-      <button class="small-btn" onclick="copyText('offerOut')">📋 העתק</button>
+      <section class="panel chat">
+        <div class="join" id="joinScreen">
+          <div class="card">
+            <h2>צ׳אט מוצפן, אנונימי, ללא שרת — רץ על GitHub Pages</h2>
+            <div class="grid-3">
+              <div class="field">
+                <label>שם חדר</label>
+                <input type="text" id="roomId2" placeholder="למשל: desert-owl" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label>סיסמה סודית (לא חובה, מומלץ)</label>
+                <input type="password" id="roomPwd2" placeholder="לפחות 10 תווים" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label>שם תצוגה (אנונימי)</label>
+                <input type="text" id="nick2" placeholder="למשל: שועל חסר-שם" />
+              </div>
+            </div>
+            <div class="row">
+              <button class="btn" id="bigJoinBtn">כניסה</button>
+              <button class="btn ghost" id="bigGenBtn">יצירת חדר+סיסמה</button>
+              <button class="btn ghost" id="bigCopyBtn">קישור הזמנה</button>
+            </div>
+            <div class="hint">שום נתון לא נשמר. הודעות עוברות ישירות בין הדפדפנים (P2P).
+              התקשורת מוצפנת מקצה לקצה, והסיגנלינג נעשה בעזרת רשתות ציבוריות (ללא API Keys).</div>
+          </div>
+        </div>
 
-      <h3>📥 הדבק את התשובה מהצופה:</h3>
-      <textarea id="answerIn"></textarea>
-      <button class="small-btn" onclick="pasteText('answerIn')">📥 הדבק</button>
-      <button class="small-btn" onclick="receiveAnswer()">✅ התחבר לצופה</button>
-    </div>
-
-    <div id="viewerSection" class="section" style="display:none;">
-      <h3>📥 הדבק את קוד השידור:</h3>
-      <textarea id="offerIn"></textarea>
-      <button class="small-btn" onclick="pasteText('offerIn')">📥 הדבק</button>
-      <button class="small-btn" onclick="sendAnswer()">📤 שלח תשובה</button>
-
-      <h3>📤 העתק ושלח למשדר:</h3>
-      <textarea id="answerOut" readonly></textarea>
-      <button class="small-btn" onclick="copyText('answerOut')">📋 העתק</button>
-    </div>
+        <div class="messages hidden" id="messages"></div>
+        <form class="composer hidden" id="composer">
+          <textarea id="input" placeholder="כתוב הודעה…" rows="1"></textarea>
+          <button class="btn" id="sendBtn" type="submit">שליחה</button>
+        </form>
+      </section>
+    </main>
   </div>
 
-  <script>
-    let peer;
-    let localStream;
-    let currentFacingMode = "user"; // "user" (קדמית) או "environment" (אחורית)
+  <script type="module">
+    import { joinRoom, selfId } from 'https://esm.run/trystero/torrent';
 
-    const iceConfig = {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" }
-      ]
-    };
+    // ========= Utilities =========
+    const byId = (id) => document.getElementById(id);
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const randomFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const words1 = ['desert','silent','silver','cool','midnight','crystal','ancient','hidden','neon','polar','dawn','velvet','shadow','ember','cobalt','mint','sable','frost','cerulean','lunar'];
+    const words2 = ['owl','fox','kite','falcon','lynx','otter','mako','orca','badger','ibis','manta','raven','wolf','yak','gecko','bison','cobra','lark','tarsier','eagle'];
+    const randRoom = () => `${randomFrom(words1)}-${randomFrom(words2)}-${(Math.random().toString(36).slice(2, 6))}`;
+    const randNick = () => `אורח-${Math.random().toString(36).slice(2,6)}`;
+    const genPwd = () => crypto.getRandomValues(new Uint8Array(16)).reduce((s,b)=>s+('0'+b.toString(16)).slice(-2),'');
 
-    async function startBroadcast() {
-      document.getElementById('broadcasterSection').style.display = 'block';
-      document.getElementById('flipBtn').style.display = 'inline-block';
-
-      await initCamera();
-
-      peer = new RTCPeerConnection(iceConfig);
-      localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
-
-      const offer = await peer.createOffer();
-      await peer.setLocalDescription(offer);
-
-      await new Promise(resolve => {
-        peer.onicecandidate = e => {
-          if (!e.candidate) {
-            document.getElementById('offerOut').value = JSON.stringify(peer.localDescription);
-            resolve();
-          }
-        };
-      });
+    // Hash fragment helpers (#r=..&p=..)
+    function updateHash(room, pwd) {
+      const u = new URL(location.href);
+      u.hash = `r=${encodeURIComponent(room)}${pwd?`&p=${encodeURIComponent(pwd)}`:''}`;
+      history.replaceState(null, '', u);
+    }
+    function readHash() {
+      if (!location.hash) return {};
+      const params = new URLSearchParams(location.hash.slice(1));
+      return { r: params.get('r') || '', p: params.get('p') || '' };
     }
 
-    async function initCamera() {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
+    // DOM elements
+    const roomId = byId('roomId');
+    const roomPwd = byId('roomPwd');
+    const nick = byId('nick');
+    const peersBox = byId('peers');
+
+    const roomId2 = byId('roomId2');
+    const roomPwd2 = byId('roomPwd2');
+    const nick2 = byId('nick2');
+
+    const joinScreen = byId('joinScreen');
+    const messages = byId('messages');
+    const composer = byId('composer');
+    const input = byId('input');
+
+    const joinBtn = byId('joinBtn');
+    const createBtn = byId('createBtn');
+    const genPwdBtn = byId('genPwdBtn');
+
+    const bigJoinBtn = byId('bigJoinBtn');
+    const bigGenBtn = byId('bigGenBtn');
+    const bigCopyBtn = byId('bigCopyBtn');
+
+    const copyInviteBtn = byId('copyInviteBtn');
+    const leaveBtn = byId('leaveBtn');
+
+    // Persist optional nickname locally only
+    nick.value = localStorage.getItem('anon-nick') || '';
+    nick2.value = nick.value || '';
+
+    // ========= P2P (Trystero) =========
+    const APP_ID = 'anon-p2p-chat-github-pages-v1'; // must be unique to your app
+
+    let room = null;
+    let sendMsg, getMsg, sendName, getName;
+    let idsToNames = {}; // peerId -> name
+
+    function setUIConnected(connected) {
+      if (connected) {
+        joinScreen.classList.add('hidden');
+        messages.classList.remove('hidden');
+        composer.classList.remove('hidden');
+        leaveBtn.classList.remove('hidden');
+      } else {
+        messages.classList.add('hidden');
+        composer.classList.add('hidden');
+        leaveBtn.classList.add('hidden');
+        joinScreen.classList.remove('hidden');
       }
-
-      const constraints = {
-        video: { facingMode: currentFacingMode },
-        audio: true
-      };
-
-      localStream = await navigator.mediaDevices.getUserMedia(constraints);
-      document.getElementById('video').srcObject = localStream;
     }
 
-    async function flipCamera() {
-      currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
-      await initCamera();
+    function appendMsg({ text, from, ts, mine=false }) {
+      const bubble = document.createElement('div');
+      bubble.className = `msg${mine ? ' mine' : ''}`;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const d = new Date(ts);
+      const time = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      meta.textContent = `${from || 'אנונימי'} • ${time}`;
+      const body = document.createElement('div');
+      body.textContent = text;
+      bubble.appendChild(meta); bubble.appendChild(body);
+      messages.appendChild(bubble);
+      messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' });
+    }
 
-      if (peer) {
-        const videoSender = peer.getSenders().find(s => s.track.kind === 'video');
-        const newTrack = localStream.getVideoTracks()[0];
-        if (videoSender && newTrack) {
-          videoSender.replaceTrack(newTrack);
-        }
+    function renderPeers() {
+      peersBox.innerHTML = '';
+      const me = document.createElement('div');
+      me.className = 'peer me';
+      me.innerHTML = `<span class="dot"></span><div>${idsToNames[selfId] || 'אני (אנונימי)'}</div><small>ME</small>`;
+      peersBox.appendChild(me);
+      if (!room) return;
+      const peers = room.getPeers();
+      for (const pid of peers) {
+        const el = document.createElement('div');
+        el.className = 'peer';
+        el.innerHTML = `<span class="dot"></span><div>${idsToNames[pid] || 'משתמש'}</div><small>${pid.slice(0,6)}</small>`;
+        peersBox.appendChild(el);
       }
     }
 
-    async function receiveAnswer() {
-      const answerStr = document.getElementById('answerIn').value;
-      if (!answerStr) return alert('❌ הדבק תשובה מהצופה');
-      const answer = JSON.parse(answerStr);
-      await peer.setRemoteDescription(new RTCSessionDescription(answer));
-      alert('✅ חיבור בוצע!');
-    }
+    async function joinRoomNow(roomName, password) {
+      if (room) room.leave();
+      idsToNames = {};
 
-    async function startViewer() {
-      document.getElementById('viewerSection').style.display = 'block';
-    }
+      // Configure Trystero with password to encrypt SDP during discovery; data is E2E by WebRTC
+      room = joinRoom({ appId: APP_ID, password }, roomName);
 
-    async function sendAnswer() {
-      const offerStr = document.getElementById('offerIn').value;
-      if (!offerStr) return alert('❌ הדבק קוד שידור!');
-      const offer = JSON.parse(offerStr);
+      // Wire actions
+      [sendMsg, getMsg] = room.makeAction('msg');
+      [sendName, getName] = room.makeAction('name');
 
-      peer = new RTCPeerConnection(iceConfig);
-      peer.ontrack = (event) => {
-        document.getElementById('video').srcObject = event.streams[0];
-      };
-
-      await peer.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
-
-      await new Promise(resolve => {
-        peer.onicecandidate = e => {
-          if (!e.candidate) {
-            document.getElementById('answerOut').value = JSON.stringify(peer.localDescription);
-            resolve();
-          }
-        };
+      // Receive messages
+      getMsg((data, peerId) => {
+        appendMsg({ text: data.text, from: idsToNames[peerId] || 'אנונימי', ts: data.ts });
       });
 
-      alert('📨 העתק ושלח את התשובה למשדר');
+      // Peer presence
+      room.onPeerJoin(async (peerId) => {
+        renderPeers();
+        // Tell newcomer our current nickname
+        if (idsToNames[selfId]) sendName(idsToNames[selfId], peerId);
+      });
+      room.onPeerLeave(() => renderPeers());
+
+      // Receive names
+      getName((name, peerId) => {
+        idsToNames[peerId] = name;
+        renderPeers();
+      });
+
+      // Set my name (from input)
+      const myName = (nick.value || nick2.value || '').trim() || randNick();
+      idsToNames[selfId] = myName;
+      sendName(myName);
+
+      // UI
+      setUIConnected(true);
+      renderPeers();
     }
 
-    function copyText(id) {
-      const el = document.getElementById(id);
-      el.select();
-      el.setSelectionRange(0, 99999);
-      navigator.clipboard.writeText(el.value).then(() => {
-        const btn = event.target;
-        const oldText = btn.innerText;
-        btn.innerText = '✅ הועתק!';
-        setTimeout(() => btn.innerText = oldText, 2000);
-      });
+    // ========= Events =========
+    // Sync fields between side panel and big card
+    function syncFields() {
+      roomId2.value = roomId.value; roomPwd2.value = roomPwd.value; nick2.value = nick.value;
     }
+    [roomId, roomPwd, nick].forEach(el => el.addEventListener('input', syncFields));
+    [roomId2, roomPwd2, nick2].forEach(el => el.addEventListener('input', () => {
+      roomId.value = roomId2.value; roomPwd.value = roomPwd2.value; nick.value = nick2.value;
+    }));
 
-    function pasteText(id) {
-      navigator.clipboard.readText().then(text => {
-        document.getElementById(id).value = text;
-        const btn = event.target;
-        const oldText = btn.innerText;
-        btn.innerText = '📥 הודבק!';
-        setTimeout(() => btn.innerText = oldText, 2000);
-      }).catch(() => {
-        alert("❌ אין גישה להדבקה. אפשר לנסות להדביק ידנית");
-      });
+    genPwdBtn.addEventListener('click', () => { roomPwd.value = genPwd(); syncFields(); updateHash(roomId.value, roomPwd.value); });
+    bigGenBtn.addEventListener('click', () => {
+      const r = randRoom(); const p = genPwd(); roomId.value = r; roomPwd.value = p; nick.value = randNick();
+      syncFields(); updateHash(r, p);
+    });
+
+    createBtn.addEventListener('click', () => { roomId.value = randRoom(); if (!roomPwd.value) roomPwd.value = genPwd(); syncFields(); updateHash(roomId.value, roomPwd.value); });
+
+    joinBtn.addEventListener('click', async () => {
+      const r = (roomId.value || '').trim(); const p = (roomPwd.value || '').trim(); if (!r) return alert('בחר שם חדר');
+      updateHash(r, p); await joinRoomNow(r, p);
+    });
+    bigJoinBtn.addEventListener('click', async () => {
+      const r = (roomId2.value || '').trim(); const p = (roomPwd2.value || '').trim(); if (!r) return alert('בחר שם חדר');
+      updateHash(r, p); await joinRoomNow(r, p);
+    });
+
+    // Copy invite link (uses #hash so password never hits server logs)
+    async function copyInvite() {
+      const r = (roomId.value || roomId2.value || '').trim();
+      const p = (roomPwd.value || roomPwd2.value || '').trim();
+      if (!r) return alert('אין שם חדר');
+      const url = new URL(location.href); url.hash = `r=${encodeURIComponent(r)}${p?`&p=${encodeURIComponent(p)}`:''}`;
+      await navigator.clipboard.writeText(url.toString());
+      copyInviteBtn.textContent = 'הועתק!';
+      bigCopyBtn.textContent = 'הועתק!';
+      setTimeout(() => { copyInviteBtn.textContent = 'העתקת קישור'; bigCopyBtn.textContent = 'קישור הזמנה'; }, 1400);
     }
+    copyInviteBtn.addEventListener('click', copyInvite);
+    bigCopyBtn.addEventListener('click', copyInvite);
+
+    // Leave room
+    leaveBtn.addEventListener('click', () => {
+      if (room) room.leave(); room = null; setUIConnected(false); messages.innerHTML = ''; peersBox.innerHTML = ''; updateHash('', '');
+    });
+
+    // Send message
+    composer.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim(); if (!text) return;
+      input.value = '';
+      const payload = { text, ts: Date.now() };
+      appendMsg({ text, from: idsToNames[selfId] || 'אני', ts: payload.ts, mine: true });
+      try { await sendMsg(payload); } catch (e) { console.error(e); }
+    });
+
+    // Save nickname locally (not shared unless you join a room)
+    function persistNick() {
+      const n = (nick.value || nick2.value || '').trim();
+      if (n) localStorage.setItem('anon-nick', n);
+      if (room && n && idsToNames[selfId] !== n) { idsToNames[selfId] = n; sendName(n); renderPeers(); }
+    }
+    nick.addEventListener('change', persistNick);
+    nick2.addEventListener('change', persistNick);
+
+    // Auto-join if URL has #r / #p
+    (async function initFromHash(){
+      const { r, p } = readHash();
+      if (r) {
+        roomId.value = r; roomId2.value = r; if (p) { roomPwd.value = p; roomPwd2.value = p; }
+        await sleep(300);
+        await joinRoomNow(r, p || '');
+      }
+    })();
   </script>
 </body>
 </html>
